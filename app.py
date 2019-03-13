@@ -9,12 +9,49 @@ from twilio.rest import Client
 from twilio.twiml.messaging_response import MessagingResponse
 
 app = Flask(__name__)
-
 global workspace_id
-workspace_id = '{your assistant workspace/skill id}'
+workspace_id = '{your workspace id}'
 
 global assistant_id
 assistant_id = '{your assistant id}'
+
+
+class ListaInstancia:
+
+    def __init__(self):
+        self.instanceList = []
+
+    def __str__(self):
+        return str(self.instanceList)
+
+    def addNewSession(self, iid, key):
+        self.instanceList.append((iid, key))
+
+    def checkKeyExistance(self, key):
+        for item in self.instanceList:
+            if key in item:
+                return True
+        return False
+
+    def checkIidExistance(self, iid):
+        for item in self.instanceList:
+            if iid in item:
+                return True
+        return False
+
+    def getIidByKey(self, key):
+        for item in self.instanceList:
+            if key in item:
+                return item[0]
+
+    def getKeyByIdd(self, idd):
+        for item in self.instanceList:
+            if idd in item:
+                return item[1]
+
+
+global sessionList
+sessionList = ListaInstancia()
 
 
 def create_assistant():
@@ -79,13 +116,17 @@ def sms_start():
     except NameError:
         create_assistant()
 
-    try:
-        session
-    except UnboundLocalError:
-        # instancia sessão de conversa caso não tenha sido
-        create_session(workspace_id, assistant_id, assistant)
-    except NameError:
-        create_session(workspace_id, assistant_id, assistant)
+        # Essa parte está responsável para gerenciar múltiplas conversas simultâneas
+
+    if sessionList.checkKeyExistance(from_number) != True:
+        session = create_session(workspace_id, assistant_id, assistant)
+        json_string = json.dumps(session)
+        json_dict = json.loads(json_string)
+        session_id = json_dict.get("session_id")
+        sessionList.addNewSession(session_id, from_number)
+        session_id = sessionList.getIidByKey(from_number)
+    else:
+        session_id = sessionList.getIidByKey(from_number)
 
     # Inicializa variáveis utilizadas pelo chat
     user_input = ''
@@ -107,18 +148,18 @@ def sms_start():
             # INICIO FUNÇOES DE LOG
             print("####----------Round Start-----------####")
             print("INPUT")
-            print("      Mensagem de " + from_number +
-                  ": '" + message_body + "'")
+            print("      Mensagem de " + from_number
+                  + ": '" + message_body + "'")
             if len(dict_digger.dig(response, 'output', 'intents')) != 0:
-                print("      Intenções: " +
-                      str(dict_digger.dig(response, 'output', 'intents', 0, 'intent')))
+                print("      Intenções: "
+                      + str(dict_digger.dig(response, 'output', 'intents', 0, 'intent')))
                 if 'General_Ending' == dict_digger.dig(response, 'output', 'intents', 0, 'intent'):
                     current_action = 'end_conversation'
                     print(current_action)
 
             if len(dict_digger.dig(response, 'output', 'entities')) != 0:
-                print("      Entidades: " +
-                      str(dict_digger.dig(response, 'output', 'entities', 0, 'entity')))
+                print("      Entidades: "
+                      + str(dict_digger.dig(response, 'output', 'entities', 0, 'entity')))
 
             print("      Contexto: " + str(dict_digger.dig(response, 'context')))
             # FIM FUNÇOES DE LOG
@@ -127,12 +168,12 @@ def sms_start():
             print("OUTPUT")
 
             if len(dict_digger.dig(response, 'output', 'intents')) != 0:
-                print("      Intenções: " +
-                      str(dict_digger.dig(response, 'output', 'intents', 0, 'intent')))
+                print("      Intenções: "
+                      + str(dict_digger.dig(response, 'output', 'intents', 0, 'intent')))
 
             if len(dict_digger.dig(response, 'output', 'entities')) != 0:
-                print("      Entidades: " +
-                      str(dict_digger.dig(response, 'output', 'entities', 0, 'entity')))
+                print("      Entidades: "
+                      + str(dict_digger.dig(response, 'output', 'entities', 0, 'entity')))
 
             print("      Contexto: " + str(dict_digger.dig(response, 'context')))
 
